@@ -189,6 +189,20 @@ def main():
         choices={'maigret'},
         help='Additional plugins to analyze links',
     )
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        action='store_true',
+        default=False,
+        help='Display junk score for each result',
+    )
+    parser.add_argument(
+        '-l',
+        '--list',
+        action='store_true',
+        default=False,
+        help='Display only list of all the URLs',
+    )
     args = parser.parse_args()
 
     username = args.username
@@ -216,9 +230,17 @@ def main():
             print('\tInstall maigret first!')
             print('\tpip3 install maigret')
 
+    if args.list:
+        for r in links:
+            print(r.url)
+        return
+
     for r in links:
         if r.is_it_likely_username_profile() and r.junk_score <= args.threshold:
-            message = colored(f'[{r.junk_score}]', 'magenta') + f' {r.url}'
+            message = r.url
+
+            if args.verbose:
+                message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + message
 
             if args.plugins == 'maigret' and maigret.db:
                 if maigret.db.extract_ids_from_url(r.url):

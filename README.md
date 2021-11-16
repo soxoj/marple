@@ -42,6 +42,8 @@ You can specify 'junk threshold' with option `-t` or `--threshold` (default 100)
 
 Junk score is summing up from length of link URL and symbols next to username as a part of URL. 
 
+Also you can increase count of results from search engines with option `--results-count` (default 100). Currently limit is onle applicable for Google.
+
 ## TODO
 
 - [ ] Proxy support

@@ -1,1 +1,3 @@
-googlesearch-python
+aiohttp
+termcolor
+bs4
