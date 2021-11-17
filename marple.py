@@ -142,7 +142,7 @@ class YandexParser:
 
         try:
             results = yandex.search(username).items
-        except yandex_search.RateLimitException as e:
+        except Exception as e:
             return str(e)
 
         tuples_list = [Link(r["url"], r["title"], username) for r in results]
