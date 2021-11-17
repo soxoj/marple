@@ -7,7 +7,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from bs4 import BeautifulSoup as bs
 import asyncio
 import aiohttp
-
+import requests
 
 username_marks_symbols = '/.~=?&      -'
 
@@ -88,6 +88,16 @@ def merge_links(links: List[Link], name: str, filter_by_urls: bool = True) -> Li
 
     return list(set(links))
 
+async def extract(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:84.0) Gecko/20100101 Firefox/84.0'
+    }
+    session = aiohttp.ClientSession()
+    coro = await session.get(url, headers=headers)
+    response = await coro.text()
+    await session.close()
+        
+    return response
 
 class Parser:
     headers = {
@@ -186,7 +196,7 @@ def main():
         '--plugin',
         dest='plugins',
         default='',
-        choices={'maigret'},
+        choices={'maigret', 'socid_extractor'},
         help='Additional plugins to analyze links',
     )
     parser.add_argument(
@@ -225,11 +235,19 @@ def main():
             import maigret
             db = maigret.MaigretDatabase().load_from_file(maigret.__path__[0]+'/resources/data.json')
             maigret.db = db
-        except Exception as e:
-            print(e)
+        except ImportError:
             print('\tInstall maigret first!')
             print('\tpip3 install maigret')
-
+            exit()
+            
+    if args.plugins == 'socid_extractor':
+        try:
+            import socid_extractor
+        except ImportError:
+            print('\tInstall maigret first!')
+            print('\tpip3 install socid_extractor')
+            exit()
+            
     if args.list:
         for r in links:
             print(r.url)
@@ -241,15 +259,21 @@ def main():
 
             if args.verbose:
                 message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + message
-
+                        
             if args.plugins == 'maigret' and maigret.db:
                 if maigret.db.extract_ids_from_url(r.url):
                     message += colored(' [v] Maigret', 'green')
                 else:
                     message += colored(' [ ] Maigret', 'yellow')
+                    
+            if args.plugins == 'socid_extractor':
+                req = requests.get(r.url)
+                extract_items = socid_extractor.extract(req.text)
+                for k,v in extract_items.items():
+                    message += ' \n' + k + ' : ' + v
 
             print(f'{message}\n{r.title}\n')
-
+            
 
 if __name__ == '__main__':
     main()
