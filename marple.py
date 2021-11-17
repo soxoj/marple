@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import re
+import os
 from typing import List
 from termcolor import colored
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -8,6 +9,8 @@ from bs4 import BeautifulSoup as bs
 import asyncio
 import aiohttp
 import requests
+
+import yandex_search
 
 username_marks_symbols = '/.~=?&      -'
 
@@ -64,13 +67,13 @@ class Link:
     # the less the junk score, the more likely it is profile url
     @property
     def junk_score(self):
-        score = 0
+        symbols_score = 0
         left_symbol, right_symbol = self.username_profile_symbols()
         for i in left_symbol+right_symbol:
             if i in username_marks_symbols:
-                score += username_marks_symbols.index(i)
+                symbols_score += username_marks_symbols.index(i)
 
-        return len(self.url) + score * 10
+        return len(self.url.split('?')[0]) + symbols_score * 10 + self.url.index(self.name) * 3
 
     def is_it_likely_username_profile(self):
         left_symbol, right_symbol = self.username_profile_symbols()
@@ -88,6 +91,7 @@ def merge_links(links: List[Link], name: str, filter_by_urls: bool = True) -> Li
 
     return list(set(links))
 
+
 async def extract(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:84.0) Gecko/20100101 Firefox/84.0'
@@ -98,6 +102,7 @@ async def extract(url):
     await session.close()
         
     return response
+
 
 class Parser:
     headers = {
@@ -117,10 +122,37 @@ class Parser:
         html = await self.request(url)
         results = await self.parse(html, username)
 
+        if not results:
+            return f'Got no results from {self.name}'
+
         storage += results
 
 
+class YandexParser:
+    name = 'Yandex API search'
+
+    """
+        You should have env variables with user and key, e.g.
+
+        export YANDEX_USER=user
+        export YANDEX_KEY=key
+    """
+    async def run(self, storage, username, count=100, lang='en'):
+        yandex = yandex_search.Yandex()
+
+        try:
+            results = yandex.search(username).items
+        except yandex_search.RateLimitException as e:
+            return str(e)
+
+        tuples_list = [Link(r["url"], r["title"], username) for r in results]
+
+        storage += tuples_list
+
+
 class GoogleParser(Parser):
+    name = 'Google scraping'
+
     def make_url(self, username, count, lang):
         return 'https://www.google.com/search?q={}&num={}&hl={}'.format(username, count, lang)
 
@@ -141,6 +173,8 @@ class GoogleParser(Parser):
 
 
 class DuckParser(Parser):
+    name = 'DuckDuckGo scraping'
+
     def make_url(self, username, count, lang):
         return 'https://duckduckgo.com/html/?q={}'.format(username)
 
@@ -175,14 +209,14 @@ def main():
         '--threshold',
         action='store',
         type=int,
-        default=100,
+        default=300,
         help='Threshold to discard junk search results',
     )
     parser.add_argument(
         '--results-count',
         action='store',
         type=int,
-        default=100,
+        default=1000,
         help='Count of results parsed from each search engine',
     )
     parser.add_argument(
@@ -219,16 +253,20 @@ def main():
     parsers = [
         GoogleParser(),
         DuckParser(),
+        YandexParser(),
     ]
 
     results = []
     coros = [parser.run(results, username, args.results_count) for parser in parsers]
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.gather(*coros))
+    errors = loop.run_until_complete(asyncio.gather(*coros))
 
+    total_collected_count = len(results)
     links = merge_links(results, username, args.url_filter)
+
     links = sorted(links, key=lambda x: x.junk_score)
+    uniq_count = len(links)
 
     if args.plugins == 'maigret':
         try:
@@ -253,8 +291,12 @@ def main():
             print(r.url)
         return
 
+    displayed_count = 0
+
     for r in links:
         if r.is_it_likely_username_profile() and r.junk_score <= args.threshold:
+            displayed_count += 1
+
             message = r.url
 
             if args.verbose:
@@ -273,7 +315,15 @@ def main():
                     message += ' \n' + k + ' : ' + v
 
             print(f'{message}\n{r.title}\n')
-            
+
+    # show status
+    status_msg = f'Links: total collected {total_collected_count} / unique with username in URL {uniq_count} / reliable {displayed_count} '
+
+    error_msg = ''
+    for i, e in enumerate(errors):
+        if e: error_msg += f'Problem with source "{parsers[i].name}": {e}\n'
+
+    print(f"{colored(status_msg, 'cyan')}\n{colored(error_msg, 'yellow')}")
 
 if __name__ == '__main__':
     main()

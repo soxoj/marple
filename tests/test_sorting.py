@@ -1,0 +1,76 @@
+from marple import *
+
+def test_sorting_soxoj():
+    urls = [
+        'https://43.130.48.5/soxoj/socid-extractor',
+        'https://www.reddit.com/user/soxoj/submitted',
+        'https://github.com/soxoj',
+        'https://github.com/soxoj/socid-extractor',
+        'https://colab.research.google.com/gist/soxoj/879b51bc3b2f8b695abb054090645000/maigret.ipynb',
+        'https://github.innominds.com/soxoj/osint-namecheckers-list/issues',
+        'https://kandi.openweaver.com/python/soxoj/gitcolombo',
+        'https://changelogs.md/github/soxoj/maigret',
+        'https://github-wiki-see.page/m/soxoj/maigret/wiki',
+        'https://hub.fastgit.org/soxoj',
+        'https://giters.com/soxoj/socid-extractor',
+        'https://xakep.ru/author/soxoj',
+        'https://t.me/soxoj',
+        'https://www.borwap.pro/soxoj.html',
+        'https://githubplus.com/soxoj',
+        'https://gitmemory.com/soxoj',
+        'https://giters.com/soxoj?tab=followers&after=y3vyc29yonyyopk5mjayms0wms0xn1qymdowmzowmiswodowmm4egqfo',
+        'https://issueexplorer.com/issue/soxoj/maigret/184',
+        'https://githubhelp.com/soxoj',
+        'https://githubmemory.com/repo/soxoj/maigret-tg-bot',
+        'https://soxoj.medium.com/about',
+        'https://git.jl-k.com/soxoj/maigret/discussions',
+        'http://admision2.unap.edu.pe/sugihbareng/soxoj.shadow.osint.information.leaks.usage.xhtml',
+        'https://awesomeopensource.com/project/soxoj/maigret',
+        'http://phoenix2.yizimg.com/soxoj/maigret/network',
+        'https://github.com.cnpmjs.org/soxoj',
+        'https://libraries.io/github/soxoj',
+        'https://git.vcmq.workers.dev/soxoj/maigret/discussions',
+        'http://www.soxoj.com',
+        'https://fruitssupplier.com/app/webroot/img/files/soxoj.pdf',
+        'https://github_com.jam.dev/soxoj',
+    ]
+
+    sorted_urls = [
+        'https://t.me/soxoj',
+        'https://soxoj.medium.com/about',
+        'http://www.soxoj.com',
+        'https://github.com/soxoj',
+        'https://gitmemory.com/soxoj',
+        'https://github.com/soxoj/socid-extractor',
+        'https://giters.com/soxoj/socid-extractor',
+        'https://githubplus.com/soxoj',
+        'https://githubhelp.com/soxoj',
+        'https://43.130.48.5/soxoj/socid-extractor',
+        'https://hub.fastgit.org/soxoj',
+        'https://xakep.ru/author/soxoj',
+        'https://git.jl-k.com/soxoj/maigret/discussions',
+        'https://www.borwap.pro/soxoj.html',
+        'https://github_com.jam.dev/soxoj',
+        'https://libraries.io/github/soxoj',
+        'https://giters.com/soxoj?tab=followers&after=y3vyc29yonyyopk5mjayms0wms0xn1qymdowmzowmiswodowmm4egqfo',
+        'https://github.com.cnpmjs.org/soxoj',
+        'https://www.reddit.com/user/soxoj/submitted',
+        'https://changelogs.md/github/soxoj/maigret',
+        'http://phoenix2.yizimg.com/soxoj/maigret/network',
+        'https://githubmemory.com/repo/soxoj/maigret-tg-bot',
+        'https://git.vcmq.workers.dev/soxoj/maigret/discussions',
+        'https://github-wiki-see.page/m/soxoj/maigret/wiki',
+        'https://issueexplorer.com/issue/soxoj/maigret/184',
+        'https://github.innominds.com/soxoj/osint-namecheckers-list/issues',
+        'https://kandi.openweaver.com/python/soxoj/gitcolombo',
+        'https://awesomeopensource.com/project/soxoj/maigret',
+        'https://colab.research.google.com/gist/soxoj/879b51bc3b2f8b695abb054090645000/maigret.ipynb',
+        'https://fruitssupplier.com/app/webroot/img/files/soxoj.pdf',
+        'http://admision2.unap.edu.pe/sugihbareng/soxoj.shadow.osint.information.leaks.usage.xhtml',
+    ]
+
+    links = [Link(url=u, title='', username='soxoj') for u in urls]
+
+    links = sorted(links, key=lambda x: x.junk_score)
+
+    assert [l.url for l in links] == sorted_urls
