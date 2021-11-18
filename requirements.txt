@@ -2,3 +2,4 @@ aiohttp
 termcolor
 bs4
 requests
+yandex_search
