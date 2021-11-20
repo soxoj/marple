@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import re
-import os
 from typing import List
 from termcolor import colored
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -73,7 +72,8 @@ class Link:
             if i in username_marks_symbols:
                 symbols_score += username_marks_symbols.index(i)
 
-        return len(self.url.split('?')[0]) + symbols_score * 10 + self.url.index(self.name) * 3
+        name_index = self.name in self.url and self.url.index(self.name) * 3 or 0
+        return len(self.url.split('?')[0]) + symbols_score * 10 + name_index
 
     def is_it_likely_username_profile(self):
         left_symbol, right_symbol = self.username_profile_symbols()
@@ -100,7 +100,7 @@ async def extract(url):
     coro = await session.get(url, headers=headers)
     response = await coro.text()
     await session.close()
-        
+
     return response
 
 
@@ -262,6 +262,12 @@ def main():
     args = parser.parse_args()
 
     username = args.username
+    if " " in username:
+        print(colored('Warning, search by firstname+lastname '
+                      'is not fully supported at the moment!\n', 'red'))
+        if args.url_filter:
+            print(colored('Try to use --no-url-filter option.\n', 'red'))
+
     parsers = [
         GoogleParser(),
         DuckParser(),
@@ -294,7 +300,7 @@ def main():
             print('\tInstall maigret first!')
             print('\tpip3 install maigret')
             exit()
-            
+
     if args.plugins == 'socid_extractor':
         try:
             import socid_extractor
@@ -302,7 +308,7 @@ def main():
             print('\tInstall maigret first!')
             print('\tpip3 install socid_extractor')
             exit()
-            
+
     if args.list:
         for r in links:
             print(r.url)
@@ -318,17 +324,17 @@ def main():
 
             if args.verbose:
                 message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + message
-                        
+
             if args.plugins == 'maigret' and maigret.db:
                 if maigret.db.extract_ids_from_url(r.url):
                     message += colored(' [v] Maigret', 'green')
                 else:
                     message += colored(' [ ] Maigret', 'yellow')
-                    
+
             if args.plugins == 'socid_extractor':
                 req = requests.get(r.url)
                 extract_items = socid_extractor.extract(req.text)
-                for k,v in extract_items.items():
+                for k, v in extract_items.items():
                     message += ' \n' + k + ' : ' + v
 
             print(f'{message}\n{r.title}\n')
@@ -341,6 +347,7 @@ def main():
         if e: error_msg += f'Problem with source "{parsers[i].name}": {e}\n'
 
     print(f"{colored(status_msg, 'cyan')}\n{colored(error_msg, 'yellow')}")
+
 
 if __name__ == '__main__':
     main()
