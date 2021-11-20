@@ -153,8 +153,13 @@ class YandexParser:
 class GoogleParser(Parser):
     name = 'Google scraping'
 
+    def __init__(self, quoted=False):
+        self.quoted = quoted
+        super().__init__()
+
     def make_url(self, username, count, lang):
-        return 'https://www.google.com/search?q={}&num={}&hl={}'.format(username, count, lang)
+        processed_username = username if not self.quoted else f'"{username}"'
+        return 'https://www.google.com/search?q={}&num={}&hl={}'.format(processed_username, count, lang)
 
     async def parse(self, html, username):
         results = []
@@ -241,6 +246,13 @@ def main():
         help='Display junk score for each result',
     )
     parser.add_argument(
+        '-d',
+        '--debug',
+        action='store_true',
+        default=False,
+        help='Display all the results from sources and debug messages',
+    )
+    parser.add_argument(
         '-l',
         '--list',
         action='store_true',
@@ -263,6 +275,11 @@ def main():
     errors = loop.run_until_complete(asyncio.gather(*coros))
 
     total_collected_count = len(results)
+
+    if args.debug:
+        for r in results:
+            print(f'{r.url}\n{r.title}\n')
+
     links = merge_links(results, username, args.url_filter)
 
     links = sorted(links, key=lambda x: x.junk_score)
