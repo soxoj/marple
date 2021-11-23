@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import json
 import re
+import os
 from typing import List
 from termcolor import colored
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -81,6 +83,13 @@ class Link:
         return (left_symbol + right_symbol).strip(username_marks_symbols) == ''
 
 
+class LinkEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Link):
+            return obj.__dict__
+        return json.JSONEncoder.default(self, obj)
+
+
 def merge_links(links: List[Link], name: str, filter_by_urls: bool = True) -> List[Link]:
     name_filter = lambda l: name in l.url.lower()
     blacklist_filter = lambda l: not any([s in l.url.lower() for s in links_blacklist])
@@ -138,9 +147,8 @@ class YandexParser:
         export YANDEX_KEY=key
     """
     async def run(self, storage, username, count=100, lang='en'):
-        yandex = yandex_search.Yandex()
-
         try:
+            yandex = yandex_search.Yandex()
             results = yandex.search(username).items
         except Exception as e:
             return str(e)
@@ -197,6 +205,57 @@ class DuckParser(Parser):
                 results.append(Link(link, title, username))
 
         return results
+
+
+class MarpleResult:
+    def __init__(self, results, links, errors, warnings):
+        self.all_links = results
+        self.unique_links = links
+        self.errors = errors
+        self.warnings = warnings
+
+
+def marple(username, max_count, url_filter_enabled, is_debug=False):
+    parsers = [
+        GoogleParser(),
+        DuckParser(),
+        YandexParser(),
+    ]
+
+    results = []
+    errors = []
+    warnings = []
+
+    debug_filename = f'debug_{username}.json'
+
+    if not is_debug or not os.path.exists(debug_filename):
+        coros = [parser.run(results, username, max_count) for parser in parsers]
+
+        loop = asyncio.get_event_loop()
+        errors = loop.run_until_complete(asyncio.gather(*coros))
+
+        if is_debug:
+            with open(debug_filename, 'w') as results_file:
+                json.dump({'res': results}, results_file, cls=LinkEncoder)
+    else:
+        with open(debug_filename) as results_file:
+            results = [Link(l['url'], l['title'], username) for l in json.load(results_file)['res']]
+
+        warnings.append(colored(f'Links were loaded from file {debug_filename}!', 'yellow'))
+
+    links = merge_links(results, username, url_filter_enabled)
+    links = sorted(links, key=lambda x: x.junk_score)
+
+    errors_dict = {}
+    for i, e in enumerate(errors):
+        if e: errors_dict[parsers[i].name] = e
+
+    return MarpleResult(
+            results,
+            links,
+            errors_dict,
+            warnings,
+        )
 
 
 def main():
@@ -268,28 +327,14 @@ def main():
         if args.url_filter:
             print(colored('Try to use --no-url-filter option.\n', 'red'))
 
-    parsers = [
-        GoogleParser(),
-        DuckParser(),
-        YandexParser(),
-    ]
+    result = marple(username, args.results_count, args.url_filter, args.verbose)
 
-    results = []
-    coros = [parser.run(results, username, args.results_count) for parser in parsers]
-
-    loop = asyncio.get_event_loop()
-    errors = loop.run_until_complete(asyncio.gather(*coros))
-
-    total_collected_count = len(results)
+    total_collected_count = len(result.all_links)
+    uniq_count = len(result.unique_links)
 
     if args.debug:
         for r in results:
             print(f'{r.url}\n{r.title}\n')
-
-    links = merge_links(results, username, args.url_filter)
-
-    links = sorted(links, key=lambda x: x.junk_score)
-    uniq_count = len(links)
 
     if args.plugins == 'maigret':
         try:
@@ -310,13 +355,13 @@ def main():
             exit()
 
     if args.list:
-        for r in links:
+        for r in result.unique_links:
             print(r.url)
         return
 
     displayed_count = 0
 
-    for r in links:
+    for r in result.unique_links:
         if r.is_it_likely_username_profile() and r.junk_score <= args.threshold:
             displayed_count += 1
 
@@ -343,8 +388,11 @@ def main():
     status_msg = f'Links: total collected {total_collected_count} / unique with username in URL {uniq_count} / reliable {displayed_count} '
 
     error_msg = ''
-    for i, e in enumerate(errors):
-        if e: error_msg += f'Problem with source "{parsers[i].name}": {e}\n'
+    for p, e in result.errors.items():
+        error_msg += f'Problem with source "{p}": {e}\n'
+
+    for w in result.warnings:
+        error_msg += f'Warning: {w}\n'
 
     print(f"{colored(status_msg, 'cyan')}\n{colored(error_msg, 'yellow')}")
 
