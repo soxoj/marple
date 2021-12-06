@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
+import asyncio
 import json
 import re
 import os
 from typing import List
-from termcolor import colored
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-from bs4 import BeautifulSoup as bs
-import asyncio
 import aiohttp
 import requests
+from aiohttp_socks import ProxyConnector
+from bs4 import BeautifulSoup as bs
+from termcolor import colored
 
 import yandex_search
+from PyPDF2 import PdfFileReader
 
 username_marks_symbols = '/.~=?&      -'
 
@@ -30,11 +32,13 @@ links_blacklist = [
 class Link:
     url: str
     title: str
+    filtered: bool
 
     def __init__(self, url, title, username):
         self.url = url.lower()
         self.title = title
         self.name = username.lower()
+        self.filtered = False
         self.normalize()
 
     def __eq__(self, other):
@@ -91,11 +95,13 @@ class LinkEncoder(json.JSONEncoder):
 
 
 def merge_links(links: List[Link], name: str, filter_by_urls: bool = True) -> List[Link]:
-    name_filter = lambda l: name in l.url.lower()
     blacklist_filter = lambda l: not any([s in l.url.lower() for s in links_blacklist])
 
     if filter_by_urls:
-        links = list(filter(name_filter, links))
+        for l in links:
+            if name not in l.url.lower():
+                l.filtered = True
+
     links = list(filter(blacklist_filter, links))
 
     return list(set(links))
@@ -118,15 +124,20 @@ class Parser:
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:84.0) Gecko/20100101 Firefox/84.0'
     }
 
-    async def request(self, url):
-        session = aiohttp.ClientSession()
+    async def request(self, url, proxy=None):
+        if proxy:
+            connector = ProxyConnector.from_url(proxy)
+            session = aiohttp.ClientSession(connector=connector)
+        else:
+            session = aiohttp.ClientSession()
+
         coro = await session.get(url, headers=self.headers)
         response = await coro.text()
         await session.close()
 
         return response
 
-    async def run(self, storage, username, count=100, lang='en'):
+    async def run(self, storage, username, count=100, lang='en', proxy=None):
         url = self.make_url(username, count, lang)
         html = await self.request(url)
         results = await self.parse(html, username)
@@ -146,7 +157,7 @@ class YandexParser:
         export YANDEX_USER=user
         export YANDEX_KEY=key
     """
-    async def run(self, storage, username, count=100, lang='en'):
+    async def run(self, storage, username, count=100, lang='en', proxy=None):
         try:
             yandex = yandex_search.Yandex()
             results = yandex.search(username).items
@@ -215,7 +226,7 @@ class MarpleResult:
         self.warnings = warnings
 
 
-def marple(username, max_count, url_filter_enabled, is_debug=False):
+def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=None):
     parsers = [
         GoogleParser(),
         DuckParser(),
@@ -229,7 +240,7 @@ def marple(username, max_count, url_filter_enabled, is_debug=False):
     debug_filename = f'debug_{username}.json'
 
     if not is_debug or not os.path.exists(debug_filename):
-        coros = [parser.run(results, username, max_count) for parser in parsers]
+        coros = [parser.run(results, username, max_count, proxy=proxy) for parser in parsers]
 
         loop = asyncio.get_event_loop()
         errors = loop.run_until_complete(asyncio.gather(*coros))
@@ -294,7 +305,7 @@ def main():
         '--plugin',
         dest='plugins',
         default='',
-        choices={'maigret', 'socid_extractor'},
+        choices={'maigret', 'socid_extractor', 'metadata'},
         help='Additional plugins to analyze links',
     )
     parser.add_argument(
@@ -318,6 +329,12 @@ def main():
         default=False,
         help='Display only list of all the URLs',
     )
+    parser.add_argument(
+        '--proxy',
+        type=str,
+        default="",
+        help="Proxy string (e.g. https://user:pass@1.2.3.4:8080)",
+    )
     args = parser.parse_args()
 
     username = args.username
@@ -327,7 +344,7 @@ def main():
         if args.url_filter:
             print(colored('Try to use --no-url-filter option.\n', 'red'))
 
-    result = marple(username, args.results_count, args.url_filter, args.verbose)
+    result = marple(username, args.results_count, args.url_filter, args.verbose, proxy=args.proxy)
 
     total_collected_count = len(result.all_links)
     uniq_count = len(result.unique_links)
@@ -361,8 +378,9 @@ def main():
 
     displayed_count = 0
 
+    # reliable links section
     for r in result.unique_links:
-        if r.is_it_likely_username_profile() and r.junk_score <= args.threshold:
+        if r.is_it_likely_username_profile() and r.junk_score <= args.threshold and not r.filtered:
             displayed_count += 1
 
             message = r.url
@@ -384,8 +402,46 @@ def main():
 
             print(f'{message}\n{r.title}\n')
 
+    pdf_count = 0
+
+    # pdf links section
+    for r in result.unique_links:
+        if r.url.endswith('pdf') or '-pdf.' in r.url:
+            if pdf_count == 0:
+                print(colored('PDF files', 'cyan'))
+
+            pdf_count += 1
+
+            message = r.url
+
+            if args.verbose:
+                message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + message
+
+            print(f'{message}\n{r.title}')
+
+            if args.plugins == 'metadata':
+                filename = r.url.split('/')[-1]
+
+                if not os.path.exists(filename):
+                    print(f'Downloading {r.url} to file {filename}...')
+                    req = requests.get(r.url)
+                    with open(filename, 'wb') as f:
+                        f.write(req.content)
+
+                with open(filename, 'rb') as f:
+                    try:
+                        pdf = PdfFileReader(f)
+                        info = pdf.getDocumentInfo()
+                        for k,v in info.items():
+                            print(colored(f'{k}: {v}', 'yellow'))
+                    except Exception as e:
+                        print(colored(e, 'red'))
+
+            print()
+
+
     # show status
-    status_msg = f'Links: total collected {total_collected_count} / unique with username in URL {uniq_count} / reliable {displayed_count} '
+    status_msg = f'Links: total collected {total_collected_count} / unique with username in URL {uniq_count} / reliable {displayed_count} / documents {pdf_count}'
 
     error_msg = ''
     for p, e in result.errors.items():

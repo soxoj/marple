@@ -3,3 +3,7 @@ termcolor
 bs4
 requests
 yandex_search
+pypdf2
+socid_extractor
+maigret
+aiohttp_socks
