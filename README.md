@@ -7,6 +7,7 @@ Collect links to profiles by username through search engines (see the full list 
 Features:
 - multiple engines
 - proxy support
+- CSV file export
 - plugins
   - pdf metadata extraction
   - social media info [extraction](socid_extractor)
@@ -73,6 +74,7 @@ Other options:
   -d, --debug           Display all the results from sources and debug messages
   -l, --list            Display only list of all the URLs
   --proxy PROXY         Proxy string (e.g. https://user:pass@1.2.3.4:8080)
+  --csv CSV             Save results to the CSV file
 ```
 
 ## Supported sources
@@ -82,6 +84,7 @@ Other options:
 | Google              | scraping                              | None, works out of the box; frequent captcha  |
 | DuckDuckGo          | scraping                              | None, works out of the box                    |
 | Yandex              | XML API                               | [Register and get USER/API tokens](https://github.com/fluquid/yandex-search)   |
+| Yahoo               | scraping                              | only one page for now  |
 
 ## Development & testing
 

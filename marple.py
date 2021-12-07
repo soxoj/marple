@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import asyncio
+import csv
 import json
 import re
 import os
 from typing import List
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import urllib.parse
 
 import aiohttp
 import requests
@@ -218,6 +220,35 @@ class DuckParser(Parser):
         return results
 
 
+class YahooParser(Parser):
+    name = 'Yahoo scraping'
+
+    def make_url(self, username, count, lang):
+        return 'https://search.yahoo.com/search?p={}&ei=UTF-8&nojs=1'.format(username)
+
+    async def parse(self, html, username):
+        results = []
+
+        soup = bs(html, 'html.parser')
+        result_block = soup.find_all('div', class_='compTitle')
+
+        for result in result_block:
+            header = result.find('h3', class_='title')
+            if not header or not header.find('a'):
+                continue
+
+            pseudo_link = header.find('span').text
+            title = header.find('a').text[len(pseudo_link):]
+            link = header.find('a')['href']
+
+            link = urllib.parse.unquote(link.split('/RU=')[1].split('/RK=2')[0])
+
+            if link and title:
+                results.append(Link(link, title, username))
+
+        return results
+
+
 class MarpleResult:
     def __init__(self, results, links, errors, warnings):
         self.all_links = results
@@ -231,6 +262,7 @@ def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=None):
         GoogleParser(),
         DuckParser(),
         YandexParser(),
+        YahooParser(),
     ]
 
     results = []
@@ -335,6 +367,12 @@ def main():
         default="",
         help="Proxy string (e.g. https://user:pass@1.2.3.4:8080)",
     )
+    parser.add_argument(
+        '--csv',
+        type=str,
+        default="",
+        help="Save results to the CSV file",
+    )
     args = parser.parse_args()
 
     username = args.username
@@ -378,9 +416,12 @@ def main():
 
     displayed_count = 0
 
+    def is_likely_profile(r):
+        return r.is_it_likely_username_profile() and r.junk_score <= args.threshold and not r.filtered
+
     # reliable links section
     for r in result.unique_links:
-        if r.is_it_likely_username_profile() and r.junk_score <= args.threshold and not r.filtered:
+        if is_likely_profile(r):
             displayed_count += 1
 
             message = r.url
@@ -404,9 +445,12 @@ def main():
 
     pdf_count = 0
 
+    def is_pdf_file(url):
+        return url.endswith('pdf') or '-pdf.' in url
+
     # pdf links section
     for r in result.unique_links:
-        if r.url.endswith('pdf') or '-pdf.' in r.url:
+        if is_pdf_file(r.url):
             if pdf_count == 0:
                 print(colored('PDF files', 'cyan'))
 
@@ -439,7 +483,6 @@ def main():
 
             print()
 
-
     # show status
     status_msg = f'Links: total collected {total_collected_count} / unique with username in URL {uniq_count} / reliable {displayed_count} / documents {pdf_count}'
 
@@ -452,6 +495,21 @@ def main():
 
     print(f"{colored(status_msg, 'cyan')}\n{colored(error_msg, 'yellow')}")
 
+    if args.csv:
+        with open(args.csv, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+            writer.writerow(['URL', 'Title', 'Score', 'Is profile page', 'Is PDF'])
+
+            def write_links(condition):
+                for r in result.unique_links:
+                    if not condition(r):
+                        continue
+                    writer.writerow([r.url, r.title, r.junk_score, is_likely_profile(r), is_pdf_file(r.url)])
+
+            write_links(lambda x: is_likely_profile(x))
+            write_links(lambda x: not is_likely_profile(x))
+
+        print(colored(f'Results was saved to CSV file {args.csv}', 'red'))
 
 if __name__ == '__main__':
     main()
