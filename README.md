@@ -2,7 +2,7 @@
 
 ## Summary
 
-Collect links to profiles by username through search engines (see the full list below).
+Collect links to profiles by username through 10+ search engines ([see the full list below](#supported-sources)).
 
 Features:
 - multiple engines
@@ -84,7 +84,15 @@ Other options:
 | Google              | scraping                              | None, works out of the box; frequent captcha  |
 | DuckDuckGo          | scraping                              | None, works out of the box                    |
 | Yandex              | XML API                               | [Register and get USER/API tokens](https://github.com/fluquid/yandex-search)   |
-| Yahoo               | scraping                              | only one page for now  |
+| Aol                 | scraping                              | None, scrapes with pagination  |
+| Ask                 | scraping                              | None, scrapes with pagination  |
+| Bing                | scraping                              | None, scrapes with pagination  |
+| Startpage           | scraping                              | None, scrapes with pagination  |
+| Yahoo               | scraping                              | None, scrapes with pagination  |
+| Qwant               | scraping                              | None, scrapes with pagination  |
+| Dogpile             | scraping                              | None, scrapes with pagination  |
+| Torch               | scraping                              | Tor proxies (socks5://localhost:9050 by default), scrapes with pagination  |
+| Qwant               | scraping                              | Check [if search available](https://www.qwant.com/) in your exit IP country, scrapes with pagination  |
 
 ## Development & testing
 

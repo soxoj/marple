@@ -2,6 +2,7 @@
 import asyncio
 import csv
 import json
+from mock import Mock
 import re
 import os
 from typing import List
@@ -10,12 +11,14 @@ import urllib.parse
 
 import aiohttp
 import requests
+import tqdm
 from aiohttp_socks import ProxyConnector
 from bs4 import BeautifulSoup as bs
 from termcolor import colored
 
 import yandex_search
 from PyPDF2 import PdfFileReader
+from search_engines import Aol, Ask, Qwant, Bing, Yahoo, Startpage, Dogpile, Mojeek, Torch
 
 username_marks_symbols = '/.~=?&      -'
 
@@ -35,12 +38,14 @@ class Link:
     url: str
     title: str
     filtered: bool
+    source: str
 
-    def __init__(self, url, title, username):
+    def __init__(self, url, title, username, source=''):
         self.url = url.lower()
         self.title = title
         self.name = username.lower()
         self.filtered = False
+        self.source = source
         self.normalize()
 
     def __eq__(self, other):
@@ -164,9 +169,9 @@ class YandexParser:
             yandex = yandex_search.Yandex()
             results = yandex.search(username).items
         except Exception as e:
-            return str(e)
+            return (self.name, str(e))
 
-        tuples_list = [Link(r["url"], r["title"], username) for r in results]
+        tuples_list = [Link(r["url"], r["title"], username, source='Yandex') for r in results]
 
         storage += tuples_list
 
@@ -193,7 +198,7 @@ class GoogleParser(Parser):
             title = result.find('h3')
 
             if link and title:
-                results.append(Link(link['href'], title.text, username))
+                results.append(Link(link['href'], title.text, username, source='Google'))
 
         return results
 
@@ -215,38 +220,79 @@ class DuckParser(Parser):
             title = result.text
 
             if link and title:
-                results.append(Link(link, title, username))
+                results.append(Link(link, title, username, source='DuckDuckGo'))
 
         return results
 
 
-class YahooParser(Parser):
-    name = 'Yahoo scraping'
+class PaginatedParser:
+    name = 'Engine for scraping with pagination'
 
-    def make_url(self, username, count, lang):
-        return 'https://search.yahoo.com/search?p={}&ei=UTF-8&nojs=1'.format(username)
+    def __init__(self, base_class=None):
+        if base_class:
+            self.base_class = base_class
 
-    async def parse(self, html, username):
+    async def run(self, storage, username, count=100, lang='en', proxy=None):
+        err = None
         results = []
 
-        soup = bs(html, 'html.parser')
-        result_block = soup.find_all('div', class_='compTitle')
+        try:
+            engine = self.base_class(print_func=Mock)
+            results = await engine.search(username)
+            rows = results.results()
+        except Exception as e:
+            err = (self.name, e)
+        finally:
+            try:
+                await engine.close()
+            except:
+                pass
 
-        for result in result_block:
-            header = result.find('h3', class_='title')
-            if not header or not header.find('a'):
-                continue
+        for r in results:
+            if 'link' in r and 'title' in r:
+                storage.append(Link(r["link"], r["title"], username, source=self.name.split()[0]))
 
-            pseudo_link = header.find('span').text
-            title = header.find('a').text[len(pseudo_link):]
-            link = header.find('a')['href']
+        return err
 
-            link = urllib.parse.unquote(link.split('/RU=')[1].split('/RK=2')[0])
 
-            if link and title:
-                results.append(Link(link, title, username))
+class QwantParser(PaginatedParser):
+    name = 'Qwant scraping with pagination'
+    base_class = Qwant
 
-        return results
+
+class AolParser(PaginatedParser):
+    name = 'Aol scraping with pagination'
+    base_class = Aol
+
+
+class AskParser(PaginatedParser):
+    name = 'Ask scraping with pagination'
+    base_class = Ask
+
+
+class BingParser(PaginatedParser):
+    name = 'Bing scraping with pagination'
+    base_class = Bing
+
+
+class YahooParser(PaginatedParser):
+    name = 'Yahoo scraping with pagination'
+    base_class = Yahoo
+
+
+class StartpageParser(PaginatedParser):
+    name = 'Startpage scraping with pagination'
+    base_class = Startpage
+
+
+class DogpileParser(PaginatedParser):
+    name = 'Dogpile scraping with pagination'
+    base_class = Dogpile
+
+
+class TorchParser(PaginatedParser):
+    name = 'Torch scraping with pagination'
+    base_class = Torch
 
 
 class MarpleResult:
@@ -257,12 +303,19 @@ class MarpleResult:
         self.warnings = warnings
 
 
-def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=None):
+async def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=None):
     parsers = [
         GoogleParser(),
         DuckParser(),
         YandexParser(),
+        AolParser(),
+        QwantParser(),
         YahooParser(),
+        StartpageParser(),
+        AskParser(),
+        BingParser(),
+        DogpileParser(),
+        TorchParser(),
     ]
 
     results = []
@@ -274,29 +327,26 @@ def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=None):
     if not is_debug or not os.path.exists(debug_filename):
         coros = [parser.run(results, username, max_count, proxy=proxy) for parser in parsers]
 
-        loop = asyncio.get_event_loop()
-        errors = loop.run_until_complete(asyncio.gather(*coros))
+        errors = [await f for f in tqdm.tqdm(asyncio.as_completed(coros), total=len(coros))]
 
+        print('here1')
         if is_debug:
+            print('here2')
             with open(debug_filename, 'w') as results_file:
                 json.dump({'res': results}, results_file, cls=LinkEncoder)
     else:
         with open(debug_filename) as results_file:
-            results = [Link(l['url'], l['title'], username) for l in json.load(results_file)['res']]
+            results = [Link(l['url'], l['title'], username, l['source']) for l in json.load(results_file)['res']]
 
         warnings.append(colored(f'Links were loaded from file {debug_filename}!', 'yellow'))
 
     links = merge_links(results, username, url_filter_enabled)
     links = sorted(links, key=lambda x: x.junk_score)
 
-    errors_dict = {}
-    for i, e in enumerate(errors):
-        if e: errors_dict[parsers[i].name] = e
-
     return MarpleResult(
             results,
             links,
-            errors_dict,
+            errors,
             warnings,
         )
 
@@ -382,13 +432,15 @@ def main():
         if args.url_filter:
             print(colored('Try to use --no-url-filter option.\n', 'red'))
 
-    result = marple(username, args.results_count, args.url_filter, args.verbose, proxy=args.proxy)
+    loop = asyncio.get_event_loop()
+
+    result = loop.run_until_complete(marple(username, args.results_count, args.url_filter, is_debug=args.debug, proxy=args.proxy))
 
     total_collected_count = len(result.all_links)
     uniq_count = len(result.unique_links)
 
     if args.debug:
-        for r in results:
+        for r in result.all_links:
             print(f'{r.url}\n{r.title}\n')
 
     if args.plugins == 'maigret':
@@ -427,7 +479,8 @@ def main():
             message = r.url
 
             if args.verbose:
-                message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + message
+                message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + \
+                          colored(f'[{r.source}]', 'green') + ' ' + message
 
             if args.plugins == 'maigret' and maigret.db:
                 if maigret.db.extract_ids_from_url(r.url):
@@ -436,10 +489,13 @@ def main():
                     message += colored(' [ ] Maigret', 'yellow')
 
             if args.plugins == 'socid_extractor':
-                req = requests.get(r.url)
-                extract_items = socid_extractor.extract(req.text)
-                for k, v in extract_items.items():
-                    message += ' \n' + k + ' : ' + v
+                try:
+                    req = requests.get(r.url)
+                    extract_items = socid_extractor.extract(req.text)
+                    for k, v in extract_items.items():
+                        message += ' \n' + k + ' : ' + v
+                except Exception as e:
+                    print(colored(e, 'red'))
 
             print(f'{message}\n{r.title}\n')
 
@@ -452,34 +508,36 @@ def main():
     for r in result.unique_links:
         if is_pdf_file(r.url):
             if pdf_count == 0:
-                print(colored('PDF files', 'cyan'))
+                print(colored('PDF files (without junk filtering)', 'cyan'))
 
             pdf_count += 1
 
             message = r.url
 
             if args.verbose:
-                message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + message
+                message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + \
+                          colored(f'[{r.source}]', 'green') + ' ' + message
 
             print(f'{message}\n{r.title}')
 
             if args.plugins == 'metadata':
                 filename = r.url.split('/')[-1]
 
-                if not os.path.exists(filename):
-                    print(f'Downloading {r.url} to file {filename}...')
-                    req = requests.get(r.url)
-                    with open(filename, 'wb') as f:
-                        f.write(req.content)
+                try:
+                    if not os.path.exists(filename):
+                        print(colored(f'Downloading {r.url} to file {filename}...', 'cyan'))
+                        req = requests.get(r.url)
+                        with open(filename, 'wb') as f:
+                            f.write(req.content)
 
-                with open(filename, 'rb') as f:
-                    try:
+                    with open(filename, 'rb') as f:
                         pdf = PdfFileReader(f)
                         info = pdf.getDocumentInfo()
                         for k,v in info.items():
                             print(colored(f'{k}: {v}', 'yellow'))
-                    except Exception as e:
-                        print(colored(e, 'red'))
+
+                except Exception as e:
+                    print(colored(e, 'red'))
 
             print()
 
@@ -487,8 +545,8 @@ def main():
     status_msg = f'Links: total collected {total_collected_count} / unique with username in URL {uniq_count} / reliable {displayed_count} / documents {pdf_count}'
 
     error_msg = ''
-    for p, e in result.errors.items():
-        error_msg += f'Problem with source "{p}": {e}\n'
+    for r in result.errors:
+        error_msg += f'Problem with source "{r[0]}": {r[1]}\n' if r else ''
 
     for w in result.warnings:
         error_msg += f'Warning: {w}\n'
@@ -496,7 +554,7 @@ def main():
     print(f"{colored(status_msg, 'cyan')}\n{colored(error_msg, 'yellow')}")
 
     if args.csv:
-        with open(args.csv, 'w', newline='') as csvfile:
+        with open(args.csv, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
             writer.writerow(['URL', 'Title', 'Score', 'Is profile page', 'Is PDF'])
 
