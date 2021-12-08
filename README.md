@@ -81,18 +81,19 @@ Other options:
 
 | Name                | Method                                | Requirements      |
 | ------------------- | --------------------------------------| ----------------- |
-| Google              | scraping                              | None, works out of the box; frequent captcha  |
-| DuckDuckGo          | scraping                              | None, works out of the box                    |
-| Yandex              | XML API                               | [Register and get USER/API tokens](https://github.com/fluquid/yandex-search)   |
-| Aol                 | scraping                              | None, scrapes with pagination  |
-| Ask                 | scraping                              | None, scrapes with pagination  |
-| Bing                | scraping                              | None, scrapes with pagination  |
-| Startpage           | scraping                              | None, scrapes with pagination  |
-| Yahoo               | scraping                              | None, scrapes with pagination  |
-| Qwant               | scraping                              | None, scrapes with pagination  |
-| Dogpile             | scraping                              | None, scrapes with pagination  |
-| Torch               | scraping                              | Tor proxies (socks5://localhost:9050 by default), scrapes with pagination  |
-| Qwant               | scraping                              | Check [if search available](https://www.qwant.com/) in your exit IP country, scrapes with pagination  |
+| [Google](http://google.com/)              | scraping                              | None, works out of the box; frequent captcha  |
+| [DuckDuckGo](https://duckduckgo.com/)     | scraping                              | None, works out of the box                    |
+| [Yandex](https://yandex.ru/)              | XML API                               | [Register and get USER/API tokens](https://github.com/fluquid/yandex-search)   |
+| [Aol](https://search.aol.com/)            | scraping                              | None, scrapes with pagination  |
+| [Ask](https://www.ask.com/)               | scraping                              | None, scrapes with pagination  |
+| [Bing](https://www.bing.com/)             | scraping                              | None, scrapes with pagination  |
+| [Startpage](https://www.startpage.com/)   | scraping                              | None, scrapes with pagination  |
+| [Yahoo](https://yahoo.com/)               | scraping                              | None, scrapes with pagination  |
+| [Mojeek](https://www.mojeek.com)          | scraping                              | None, scrapes with pagination  |
+| [Dogpile](https://www.dogpile.com/)       | scraping                              | None, scrapes with pagination  |
+| [Torch](http://torchdeedp3i2jigzjdmfpn5ttjhthh5wbmda2rr3jvqjg5p77c54dqd.onion)               | scraping                              | Tor proxies (socks5://localhost:9050 by default), scrapes with pagination  |
+| [Qwant](https://www.qwant.com/)           | scraping                              | Check [if search available](https://www.qwant.com/) in your exit IP country, scrapes with pagination  |
+
 
 ## Development & testing
 
@@ -102,6 +103,8 @@ $ python3 -m pytest tests
 
 ## TODO
 
-- [v] Proxy support
-- [ ] Additional search engines
+- [x] Proxy support
+- [ ] Engines choose through arguments
+- [ ] Exact search filter
 - [ ] Engine-specific filters
+- [ ] 'Username in title' check
