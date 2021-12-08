@@ -126,18 +126,20 @@ async def extract(url):
     return response
 
 
+async def create_async_session(proxy=None):
+    if proxy:
+        connector = ProxyConnector.from_url(proxy)
+        return aiohttp.ClientSession(connector=connector)
+
+    return  aiohttp.ClientSession()
+
 class Parser:
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:84.0) Gecko/20100101 Firefox/84.0'
     }
 
     async def request(self, url, proxy=None):
-        if proxy:
-            connector = ProxyConnector.from_url(proxy)
-            session = aiohttp.ClientSession(connector=connector)
-        else:
-            session = aiohttp.ClientSession()
-
+        session = await create_async_session(proxy)
         coro = await session.get(url, headers=self.headers)
         response = await coro.text()
         await session.close()
@@ -150,7 +152,7 @@ class Parser:
         results = await self.parse(html, username)
 
         if not results:
-            return f'Got no results from {self.name}'
+            return (self.name, f'Got no results')
 
         storage += results
 
@@ -235,9 +237,13 @@ class PaginatedParser:
     async def run(self, storage, username, count=100, lang='en', proxy=None):
         err = None
         results = []
+        kwargs = {}
+
+        if proxy:
+            kwargs['proxy'] = proxy
 
         try:
-            engine = self.base_class(print_func=Mock)
+            engine = self.base_class(print_func=Mock, **kwargs)
             results = await engine.search(username)
             rows = results.results()
         except Exception as e:
@@ -248,9 +254,14 @@ class PaginatedParser:
             except:
                 pass
 
+        new_results = []
         for r in results:
             if 'link' in r and 'title' in r:
-                storage.append(Link(r["link"], r["title"], username, source=self.name.split()[0]))
+                new_results.append(Link(r["link"], r["title"], username, source=self.name.split()[0]))
+
+        storage += new_results
+        if not new_results:
+            err = (self.name, 'Got no results')
 
         return err
 
@@ -259,6 +270,17 @@ class QwantParser(PaginatedParser):
     name = 'Qwant scraping with pagination'
     base_class = Qwant
 
+    async def run(self, storage, username, count=100, lang='en', proxy=None):
+        check_url = 'https://www.qwant.com/'
+        session = await create_async_session(proxy)
+        coro = await session.get(check_url)
+        response = await coro.text()
+        await session.close()
+
+        if 'Unfortunately we are not yet available in your country.' in response:
+            return ('Qwant', 'fake results, engine is not available in exit IP country')
+
+        super().run(self, storage, username, count, lang, proxy)
 
 class AolParser(PaginatedParser):
     name = 'Aol scraping with pagination'
@@ -331,7 +353,7 @@ async def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=
 
         if is_debug:
             with open(debug_filename, 'w') as results_file:
-                json.dump({'res': results}, results_file, cls=LinkEncoder)
+                json.dump({'res': results}, results_file, cls=LinkEncoder, indent=4)
     else:
         with open(debug_filename) as results_file:
             results = [Link(l['url'], l['title'], username, l['source']) for l in json.load(results_file)['res']]
