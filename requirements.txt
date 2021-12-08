@@ -7,5 +7,5 @@ pypdf2
 socid_extractor
 maigret
 aiohttp_socks
-git+https://github.com/soxoj/Search-Engines-Scraper
+search_engines @ https://github.com/soxoj/Search-Engines-Scraper/archive/refs/heads/master.zip
 tqdm

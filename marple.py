@@ -329,9 +329,7 @@ async def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=
 
         errors = [await f for f in tqdm.tqdm(asyncio.as_completed(coros), total=len(coros))]
 
-        print('here1')
         if is_debug:
-            print('here2')
             with open(debug_filename, 'w') as results_file:
                 json.dump({'res': results}, results_file, cls=LinkEncoder)
     else:
