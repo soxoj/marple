@@ -1,5 +1,12 @@
 # Marple
 
+<p align="center">
+  <p align="center">
+    <img src="https://raw.githubusercontent.com/soxoj/marple/main/example.png" height="200"/>
+  </p>
+</p>
+
+
 ## Summary
 
 Collect links to profiles by username through 10+ search engines ([see the full list below](#supported-sources)).
@@ -52,6 +59,11 @@ All you need is Python3. And pip. And requirements, of course.
 pip3 install -r requirements.txt
 ```
 
+You need API keys for some search engines (see requirements in [Supported sources](#supported-sources)). Keys should be exported to env in this way:
+```
+export YANDEX_KEY=key
+```
+
 ## Options
 
 You can specify 'junk threshold' with option `-t` or `--threshold` (default 300) to get more or less reliable results.
@@ -83,8 +95,8 @@ Other options:
 | ------------------- | --------------------------------------| ----------------- |
 | [Google](http://google.com/)              | scraping                              | None, works out of the box; frequent captcha  |
 | [DuckDuckGo](https://duckduckgo.com/)     | scraping                              | None, works out of the box                    |
-| [Yandex](https://yandex.ru/)              | XML API                               | [Register and get USER/API tokens](https://github.com/fluquid/yandex-search)   |
-| [Aol](https://search.aol.com/)            | scraping                              | None, scrapes with pagination  |
+| [Yandex](https://yandex.ru/)              | XML API                               | [Register and get YANDEX_USER/YANDEX_KEY tokens](https://github.com/fluquid/yandex-search)   |
+| [Naver](https://www.naver.com/)              | SerpApi                               | [Register and get SERPAPI_KEY token](https://serpapi.com/)   || [Aol](https://search.aol.com/)            | scraping                              | None, scrapes with pagination  |
 | [Ask](https://www.ask.com/)               | scraping                              | None, scrapes with pagination  |
 | [Bing](https://www.bing.com/)             | scraping                              | None, scrapes with pagination  |
 | [Startpage](https://www.startpage.com/)   | scraping                              | None, scrapes with pagination  |
@@ -92,7 +104,7 @@ Other options:
 | [Mojeek](https://www.mojeek.com)          | scraping                              | None, scrapes with pagination  |
 | [Dogpile](https://www.dogpile.com/)       | scraping                              | None, scrapes with pagination  |
 | [Torch](http://torchdeedp3i2jigzjdmfpn5ttjhthh5wbmda2rr3jvqjg5p77c54dqd.onion)               | scraping                              | Tor proxies (socks5://localhost:9050 by default), scrapes with pagination  |
-| [Qwant](https://www.qwant.com/)           | scraping                              | Check [if search available](https://www.qwant.com/) in your exit IP country, scrapes with pagination  |
+| [Qwant](https://www.qwant.com/)           | Qwant API                              | Check [if search available](https://www.qwant.com/) in your exit IP country, scrapes with pagination  |
 
 
 ## Development & testing

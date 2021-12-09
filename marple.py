@@ -18,7 +18,8 @@ from termcolor import colored
 
 import yandex_search
 from PyPDF2 import PdfFileReader
-from search_engines import Aol, Ask, Qwant, Bing, Yahoo, Startpage, Dogpile, Mojeek, Torch
+from search_engines import Aol, Ask, Qwant, Bing, Yahoo, Startpage, Dogpile, Mojeek, Torch, Duckduckgo
+from serpapi import GoogleSearch as SerpGoogle
 
 username_marks_symbols = '/.~=?&      -'
 
@@ -49,7 +50,10 @@ class Link:
         self.normalize()
 
     def __eq__(self, other):
-        return self.url == other.url
+        def normalize(url):
+            return url.replace('https://', 'http://')
+
+        return normalize(self.url) == normalize(other.url)
 
     def __hash__(self):
         return hash(self.url)
@@ -205,6 +209,7 @@ class GoogleParser(Parser):
         return results
 
 
+# old unused parser
 class DuckParser(Parser):
     name = 'DuckDuckGo scraping'
 
@@ -317,6 +322,39 @@ class TorchParser(PaginatedParser):
     base_class = Torch
 
 
+class DuckduckgoParser(PaginatedParser):
+    name = 'Duckduckgo scraping with pagination'
+    base_class = Duckduckgo
+
+
+class NaverParser:
+    name = 'Naver parser (SerpApi)'
+
+    """
+        You should have env variables with key, e.g.
+
+        export SERPAPI_KEY=key
+    """
+    async def run(self, storage, username, count=100, lang='en', proxy=None):
+        params = {
+          "engine": "naver",
+          "query": username,
+          "where": "web",
+          "api_key": os.getenv('SERPAPI_KEY')
+        }
+
+        try:
+            search = SerpGoogle(params)
+            results = search.get_dict()
+            organic_results = results['organic_results']
+        except Exception as e:
+            return (self.name, str(e))
+
+        tuples_list = [Link(r["link"], r["title"], username, source='Naver') for r in organic_results]
+
+        storage += tuples_list
+
+
 class MarpleResult:
     def __init__(self, results, links, errors, warnings):
         self.all_links = results
@@ -328,7 +366,6 @@ class MarpleResult:
 async def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=None):
     parsers = [
         GoogleParser(),
-        DuckParser(),
         YandexParser(),
         AolParser(),
         QwantParser(),
@@ -338,6 +375,8 @@ async def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=
         BingParser(),
         DogpileParser(),
         TorchParser(),
+        DuckduckgoParser(),
+        NaverParser(),
     ]
 
     results = []
