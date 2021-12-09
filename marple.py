@@ -19,7 +19,7 @@ from termcolor import colored
 import yandex_search
 from PyPDF2 import PdfFileReader
 from search_engines import Aol, Ask, Qwant, Bing, Yahoo, Startpage, Dogpile, Mojeek, Torch, Duckduckgo
-from serpapi import GoogleSearch as SerpGoogle
+from serpapi import GoogleSearch as SerpGoogle, BaiduSearch as SerpBaidu
 
 username_marks_symbols = '/.~=?&      -'
 
@@ -327,6 +327,7 @@ class DuckduckgoParser(PaginatedParser):
     base_class = Duckduckgo
 
 
+# TODO: pagination
 class NaverParser:
     name = 'Naver parser (SerpApi)'
 
@@ -355,6 +356,45 @@ class NaverParser:
         storage += tuples_list
 
 
+# TODO: pagination
+class BaiduParser:
+    name = 'Baidu parser (SerpApi)'
+
+    """
+        You should have env variables with key, e.g.
+
+        export SERPAPI_KEY=key
+    """
+    async def run(self, storage, username, count=100, lang='en', proxy=None):
+        params = {
+          "engine": "baidu",
+          "q": username,
+          "api_key": os.getenv('SERPAPI_KEY')
+        }
+
+        try:
+            search = SerpBaidu(params)
+            results = search.get_dict()
+            organic_results = results['organic_results']
+        except Exception as e:
+            return (self.name, str(e))
+
+        session = await create_async_session(proxy)
+
+        async def baidu_resolve(res):
+            resp = await session.request('GET', res['link'], allow_redirects=False)
+            location = resp.headers.get('location')
+            res['link'] = location
+
+        coros = [baidu_resolve(r) for r in organic_results]
+        await asyncio.gather(*coros)
+        await session.close()
+
+        tuples_list = [Link(r["link"], r["title"], username, source='Naver') for r in organic_results]
+
+        storage += tuples_list
+
+
 class MarpleResult:
     def __init__(self, results, links, errors, warnings):
         self.all_links = results
@@ -377,6 +417,7 @@ async def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=
         TorchParser(),
         DuckduckgoParser(),
         NaverParser(),
+        BaiduParser(),
     ]
 
     results = []

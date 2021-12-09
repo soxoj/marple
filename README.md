@@ -96,7 +96,9 @@ Other options:
 | [Google](http://google.com/)              | scraping                              | None, works out of the box; frequent captcha  |
 | [DuckDuckGo](https://duckduckgo.com/)     | scraping                              | None, works out of the box                    |
 | [Yandex](https://yandex.ru/)              | XML API                               | [Register and get YANDEX_USER/YANDEX_KEY tokens](https://github.com/fluquid/yandex-search)   |
-| [Naver](https://www.naver.com/)              | SerpApi                               | [Register and get SERPAPI_KEY token](https://serpapi.com/)   || [Aol](https://search.aol.com/)            | scraping                              | None, scrapes with pagination  |
+| [Naver](https://www.naver.com/)           | SerpApi                               | [Register and get SERPAPI_KEY token](https://serpapi.com/)   |
+| [Baidu](https://www.baidu.com/)           | SerpApi                               | [Register and get SERPAPI_KEY token](https://serpapi.com/)   |
+| [Aol](https://search.aol.com/)            | scraping                              | None, scrapes with pagination  |
 | [Ask](https://www.ask.com/)               | scraping                              | None, scrapes with pagination  |
 | [Bing](https://www.bing.com/)             | scraping                              | None, scrapes with pagination  |
 | [Startpage](https://www.startpage.com/)   | scraping                              | None, scrapes with pagination  |
