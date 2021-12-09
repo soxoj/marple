@@ -1,8 +1,8 @@
 # Marple
 
-<p align="center">
-  <p align="center">
-    <img src="https://raw.githubusercontent.com/soxoj/marple/main/example.png" height="200"/>
+<p align="left">
+  <p align="left">
+    <img src="https://raw.githubusercontent.com/soxoj/marple/main/example.png" height="300"/>
   </p>
 </p>
 
