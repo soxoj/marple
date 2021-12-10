@@ -51,6 +51,13 @@ Social OSINT fundamentals - Codeby.net
 Links: total collected 111 / unique with username in URL 97 / reliable 38 / documents 3
 ```
 
+Advanced usage:
+```
+./marple.py soxoj --plugins metadata
+
+./marple.py smirnov --engines google baidu -v
+```
+
 ## Installation
 
 All you need is Python3. And pip. And requirements, of course.
@@ -80,8 +87,13 @@ Other options:
   --results-count RESULTS_COUNT
                         Count of results parsed from each search engine
   --no-url-filter       Disable filtering results by usernames in URLs
-  --plugin {socid_extractor,metadata,maigret}
+
+  --engines {baidu,dogpile,google,bing,ask,aol,torch,yandex,naver,paginated,yahoo,startpage,duckduckgo,qwant}
+                        Engines to run (you can choose more than one)
+
+  --plugins {socid_extractor,metadata,maigret} [{socid_extractor,metadata,maigret} ...]
                         Additional plugins to analyze links
+
   -v, --verbose         Display junk score for each result
   -d, --debug           Display all the results from sources and debug messages
   -l, --list            Display only list of all the URLs

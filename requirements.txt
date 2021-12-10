@@ -10,3 +10,4 @@ aiohttp_socks
 search_engines @ https://github.com/soxoj/Search-Engines-Scraper/archive/refs/heads/master.zip
 tqdm
 google-search-results
+mock
