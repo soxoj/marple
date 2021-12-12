@@ -656,22 +656,24 @@ def main():
 
             if 'metadata' in args.plugins:
                 filename = r.url.split('/')[-1]
+                if not os.path.exists(username):
+                    os.mkdir(username)
+                else:
+                    try:
+                        if not os.path.exists(os.path.join(username, filename)):
+                            print(colored(f'Downloading {r.url} to file {filename} ...', 'cyan'))
+                            req = requests.get(r.url)
+                            with open(os.path.join(username, filename), 'wb') as f:
+                                f.write(req.content)
 
-                try:
-                    if not os.path.exists(filename):
-                        print(colored(f'Downloading {r.url} to file {filename} ...', 'cyan'))
-                        req = requests.get(r.url)
-                        with open(filename, 'wb') as f:
-                            f.write(req.content)
+                        with open(os.path.join(username, filename), 'rb') as f:
+                            pdf = PdfFileReader(f)
+                            info = pdf.getDocumentInfo()
+                            for k,v in info.items():
+                                print(colored(f'{k}: {v}', 'yellow'))
 
-                    with open(filename, 'rb') as f:
-                        pdf = PdfFileReader(f)
-                        info = pdf.getDocumentInfo()
-                        for k,v in info.items():
-                            print(colored(f'{k}: {v}', 'yellow'))
-
-                except Exception as e:
-                    print(colored(e, 'red'))
+                    except Exception as e:
+                        print(colored(e, 'red'))
 
             print()
 
