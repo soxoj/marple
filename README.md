@@ -134,3 +134,7 @@ $ python3 -m pytest tests
 - [ ] Exact search filter
 - [ ] Engine-specific filters
 - [ ] 'Username in title' check
+
+## Mentions and articles
+
+[OS2INT - MARPLE: IDENTIFYING AND EXTRACTING SOCIAL MEDIA USER LINKS](https://os2int.com/toolbox/identifying-and-extracting-social-media-user-links-with-marple/)
