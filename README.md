@@ -137,4 +137,6 @@ $ python3 -m pytest tests
 
 ## Mentions and articles
 
+[Sector035 - Week in OSINT #2021-50](https://sector035.nl/articles/2021-50)
+
 [OS2INT - MARPLE: IDENTIFYING AND EXTRACTING SOCIAL MEDIA USER LINKS](https://os2int.com/toolbox/identifying-and-extracting-social-media-user-links-with-marple/)
