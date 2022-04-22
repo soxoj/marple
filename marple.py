@@ -482,8 +482,32 @@ def main():
         'Collect links to profiles by username through search engines',
     )
     parser.add_argument(
-        'username',
-        help='Username to search by.',
+        'name',
+        help='Target username or first/lastname to search by.',
+    )
+    parser.add_argument(
+        '--username',
+        help='Target username',
+    )
+    parser.add_argument(
+        '--firstname',
+        help='Target firstname, e.g. Jon',
+    )
+    parser.add_argument(
+        '--lastname',
+        help='Target lastname/surname, e.g. Snow',
+    )
+    parser.add_argument(
+        '--middlename',
+        help='Target middlename/patronymic/avonymic/matronymic, e.g. Snow',
+    )
+    parser.add_argument(
+        '--birthdate',
+        help='Target date of birth an any format, e.g. 02/17/2009',
+    )
+    parser.add_argument(
+        '--country',
+        help='Target country any format, e.g. UK',
     )
     parser.add_argument(
         '-t',
@@ -557,7 +581,7 @@ def main():
     )
     args = parser.parse_args()
 
-    username = args.username
+    username = args.name
     if " " in username:
         print(colored('Warning, search by firstname+lastname '
                       'is not fully supported at the moment!\n', 'red'))
