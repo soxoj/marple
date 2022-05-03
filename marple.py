@@ -191,7 +191,7 @@ class YandexParser:
 class GoogleParser(Parser):
     name = 'Google scraping'
 
-    def __init__(self, quoted=False):
+    def __init__(self, quoted=True):
         self.quoted = quoted
         super().__init__()
 
@@ -353,7 +353,7 @@ class NaverParser:
         try:
             search = SerpGoogle(params)
             results = search.get_dict()
-            organic_results = results['organic_results']
+            organic_results = results.get('organic_results', [])
         except KeyError as e:
             return (self.name, f'Not found env variable {str(e)}')
         except Exception as e:
