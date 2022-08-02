@@ -84,11 +84,12 @@ class Link:
     # the less the junk score, the more likely it is profile url
     @property
     def junk_score(self):
-        symbols_score = 0
         left_symbol, right_symbol = self.username_profile_symbols()
-        for i in left_symbol+right_symbol:
-            if i in username_marks_symbols:
-                symbols_score += username_marks_symbols.index(i)
+        symbols_score = sum(
+            username_marks_symbols.index(i)
+            for i in left_symbol + right_symbol
+            if i in username_marks_symbols
+        )
 
         name_index = self.name in self.url and self.url.index(self.name) * 3 or 0
         return len(self.url.split('?')[0]) + symbols_score * 10 + name_index
@@ -107,7 +108,10 @@ class LinkEncoder(json.JSONEncoder):
 
 
 def merge_links(links: List[Link], name: str, filter_by_urls: bool = True) -> List[Link]:
-    blacklist_filter = lambda l: not any([s in l.url.lower() for s in links_blacklist])
+    blacklist_filter = lambda l: all(
+        s not in l.url.lower() for s in links_blacklist
+    )
+
 
     if filter_by_urls:
         for l in links:
@@ -160,7 +164,7 @@ class Parser:
             return (self.name, f'Error of type "{type(e)}": {e}')
 
         if not results:
-            return (self.name, f'Got no results')
+            return self.name, 'Got no results'
 
         storage += results
 
@@ -196,8 +200,8 @@ class GoogleParser(Parser):
         super().__init__()
 
     def make_url(self, username, count, lang):
-        processed_username = username if not self.quoted else f'"{username}"'
-        return 'https://www.google.com/search?q={}&num={}&hl={}'.format(processed_username, count, lang)
+        processed_username = f'"{username}"' if self.quoted else username
+        return f'https://www.google.com/search?q={processed_username}&num={count}&hl={lang}'
 
     async def parse(self, html, username):
         results = []
@@ -220,7 +224,7 @@ class DuckParserOld(Parser):
     name = 'DuckDuckGo scraping'
 
     def make_url(self, username, count, lang):
-        return 'https://duckduckgo.com/html/?q={}'.format(username)
+        return f'https://duckduckgo.com/html/?q={username}'
 
     async def parse(self, html, username):
         results = []
@@ -265,10 +269,11 @@ class PaginatedParser:
             except:
                 pass
 
-        new_results = []
-        for r in results:
-            if 'link' in r and 'title' in r:
-                new_results.append(Link(r["link"], r["title"], username, source=self.name.split()[0]))
+        new_results = [
+            Link(r["link"], r["title"], username, source=self.name.split()[0])
+            for r in results
+            if 'link' in r and 'title' in r
+        ]
 
         storage += new_results
         if not new_results:
@@ -432,9 +437,7 @@ async def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=
     ]
 
     if custom_engines:
-        parsers = [
-            globals()[e.capitalize() + 'Parser']() for e in custom_engines
-        ]
+        parsers = [globals()[f'{e.capitalize()}Parser']() for e in custom_engines]
 
     results = []
     errors = []
@@ -468,11 +471,11 @@ async def marple(username, max_count, url_filter_enabled, is_debug=False, proxy=
 
 
 def get_engines_names():
-    names = set()
-    for k in globals().keys():
-        if k.lower().endswith('parser') and k != 'Parser':
-            names.add(k.split('Parser')[0].lower())
-    return names
+    return {
+        k.split('Parser')[0].lower()
+        for k in globals()
+        if k.lower().endswith('parser') and k != 'Parser'
+    }
 
 
 def main():
@@ -512,8 +515,9 @@ def main():
         dest='engines',
         nargs='+',
         choices=get_engines_names(),
-        help=f'Engines to run (you can choose more than one)',
+        help='Engines to run (you can choose more than one)',
     )
+
     parser.add_argument(
         '--plugins',
         dest='plugins',
@@ -580,7 +584,10 @@ def main():
     if 'maigret' in args.plugins:
         try:
             import maigret
-            db = maigret.MaigretDatabase().load_from_file(maigret.__path__[0]+'/resources/data.json')
+            db = maigret.MaigretDatabase().load_from_file(
+                f'{maigret.__path__[0]}/resources/data.json'
+            )
+
             maigret.db = db
         except ImportError:
             print('\tInstall maigret first!')
