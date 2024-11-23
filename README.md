@@ -1,15 +1,10 @@
 # Marple
 
-<p align="left">
-  <p align="left">
-    <img src="https://raw.githubusercontent.com/soxoj/marple/main/example.png" height="300"/>
-  </p>
-</p>
+**Collect links to profiles by username through 10+ search engines ([see the full list below](#supported-sources)).**
 
+<img src="https://github.com/user-attachments/assets/b8d64e54-56fa-4805-b1ab-ff39ebead753" height="300"/>
 
-## Summary
-
-Collect links to profiles by username through 10+ search engines ([see the full list below](#supported-sources)).
+*Idea by [Cyber Detective](https://cybdetective.com/)*
 
 Features:
 - multiple engines
@@ -25,7 +20,9 @@ Features:
 ./marple.py soxoj
 ```
 
-**Results**:
+<img src="https://raw.githubusercontent.com/soxoj/marple/main/example.png" height="300"/>
+
+### Results
 ```
 https://t.me/soxoj
 Contact @soxoj - Telegram
@@ -140,3 +137,9 @@ $ python3 -m pytest tests
 [Sector035 - Week in OSINT #2021-50](https://sector035.nl/articles/2021-50)
 
 [OS2INT - MARPLE: IDENTIFYING AND EXTRACTING SOCIAL MEDIA USER LINKS](https://os2int.com/toolbox/identifying-and-extracting-social-media-user-links-with-marple/)
+
+[Cyber Detective - X](https://threadreaderapp.com/thread/1532094437027102721.html)
+
+[OSINT Ambition - X post](https://twitter.com/osintambition/status/1725011306947006797)
+
+[Offensive Security Cheatsheet - Usernames](https://cheatsheet.haax.fr/open-source-intelligence-osint/human-recon/username/)
