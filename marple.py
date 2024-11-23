@@ -592,7 +592,11 @@ def main():
         if args.url_filter:
             print(colored('Try to use --no-url-filter option.\n', 'red'))
 
-    loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     result = loop.run_until_complete(marple(username, args.results_count, args.url_filter,
                                             is_debug=args.debug, proxy=args.proxy,
