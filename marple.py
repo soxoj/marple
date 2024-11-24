@@ -11,6 +11,9 @@ import urllib.parse
 
 import aiohttp
 import requests
+import random
+import string
+import difflib
 import tqdm
 from aiohttp_socks import ProxyConnector
 from bs4 import BeautifulSoup as bs
@@ -35,6 +38,118 @@ links_blacklist = [
     '/search?q=',
 ]
 
+def ai_generate_username():
+    url = "http://localhost:1234/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF",
+        "messages": [
+            {"role": "system", "content": "Always answer with a message contains only an answer, without any comments and explanations"},
+            {"role": "user", "content": "Give a random internet username"}
+        ],
+        "temperature": 0.7,
+        "max_tokens": -1,
+        "stream": False
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        username = response.json()["choices"][0]["message"]["content"]
+        username = username.strip('"')
+        return username
+    except:
+        raise Exception("The LLM AI endpoint is not available. Please, edit the settings of LLM API endpoint in the source code")
+
+def generate_random_username():
+    return ''.join(random.choices(string.ascii_lowercase, k=10))
+
+def maigret_exporter(link):
+    username = link.name
+    random_username = generate_random_username()
+    try:
+        first_html_response = requests.get(link.url).text
+        url_of_non_existing_account = link.url.lower().replace(username.lower(), random_username)
+        second_html_response = requests.get(url_of_non_existing_account).text
+    except Exception as e:
+        return None, None, str(e)
+
+    SEPARATORS = "\"'\n"
+    TOP_FEATURES = 5
+    
+    tokens_a = set(re.split(f'[{SEPARATORS}]', first_html_response))
+    tokens_b = set(re.split(f'[{SEPARATORS}]', second_html_response))
+
+    a_minus_b = tokens_a.difference(tokens_b)
+    b_minus_a = tokens_b.difference(tokens_a)
+
+    a_minus_b = list(map(lambda x: x.strip('\\'), a_minus_b))
+    b_minus_a = list(map(lambda x: x.strip('\\'), b_minus_a))
+
+    # Filter out strings containing usernames
+    a_minus_b = [s for s in a_minus_b if username not in s]
+    b_minus_a = [s for s in b_minus_a if random_username not in s]
+
+    if len(a_minus_b) == len(b_minus_a) == 0:
+        return None, None, "HTML responses are the same"
+
+    presence_strings = [
+        "username",
+        "not found",
+        "пользователь",
+        "profile",
+        "lastname",
+        "firstname",
+        "biography",
+        "birthday",
+        "репутация",
+        "информация",
+        "e-mail"
+    ]
+
+    def get_match_ratio(base_strs: list):
+        def get_match_inner(s: str):
+            return round(
+                max(
+                    [
+                        difflib.SequenceMatcher(a=s.lower(), b=s2.lower()).ratio()
+                        for s2 in base_strs
+                    ]
+                ),
+                2,
+            )
+        return get_match_inner
+
+    match_fun = get_match_ratio(presence_strings)
+
+    presence_list = sorted(a_minus_b, key=match_fun, reverse=True)[:TOP_FEATURES]
+    absence_list = sorted(b_minus_a, key=match_fun, reverse=True)[:TOP_FEATURES]
+
+    return presence_list, absence_list, "Found"
+
+def extract_username_from_url(site_url):
+    url = "http://localhost:1234/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF",
+        "messages": [
+            # {"role": "system", "content": "Always answer with a message contains only an answer (one word), without any comments and explanations"},
+            {"role": "user", "content": f"Extract the username from the URL: {site_url}. The username is the part of the URL that comes immediately after the last '/' separator and may include '.', '-', and '_' as valid characters. The username should exclude any prefixes like 'http', 'https', 'www', or any trailing query parameters ('?') or fragments ('#'). Symbols '.', '-', and '_' must be treated as integral parts of the username and not removed or modified. Answer with a username only, which can be a combination of segments separated by '.', '-', and '_'."},
+        ],
+        "n_ctx": 2048,
+        "temperature": 0.8,
+        "max_tokens": -1,
+        "stream": False
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        return response.json()["choices"][0]["message"]["content"]
+    except:
+        raise Exception("The LLM AI endpoint is not available. Please, edit the settings of LLM API endpoint in the source code")
 
 class Link:
     url: str
@@ -547,7 +662,7 @@ def main():
         dest='plugins',
         nargs='+',
         default='',
-        choices={'maigret', 'socid_extractor', 'metadata'},
+        choices={'maigret', 'socid_extractor', 'metadata', 'random_username', 'extract_username', 'maigret_export'},
         help='Additional plugins to analyze links',
     )
     parser.add_argument(
@@ -584,6 +699,11 @@ def main():
         help="Save results to the CSV file",
     )
     args = parser.parse_args()
+
+    if args.plugins and 'random_username' in args.plugins:
+        new_username = ai_generate_username()
+        print(colored(f'[random_username] AI-generated username "{new_username}" will be used for search instead of "{args.name}"', 'green'))
+        args.name = new_username
 
     username = args.name
     if " " in username:
@@ -640,6 +760,10 @@ def main():
     def is_likely_profile(r):
         return r.is_it_likely_username_profile() and r.junk_score <= args.threshold and not r.filtered
 
+    junk_scores = [r.junk_score for r in result.unique_links]
+    medium_junk_score = sorted(junk_scores)[len(junk_scores)//2] if junk_scores else 0
+    average_junk_score = sum(junk_scores)/len(junk_scores) if junk_scores else 0
+
     # reliable links section
     for r in result.unique_links:
         if is_likely_profile(r):
@@ -651,11 +775,27 @@ def main():
                 message = colored(f'[{r.junk_score}]', 'magenta') + ' ' + \
                           colored(f'[{r.source}]', 'green') + ' ' + message
 
+            maigret_found = False
             if 'maigret' in args.plugins and maigret.db:
+                main_url = r.url.replace(args.name, '')
+
+                if os.path.exists('.maigret.json'):
+                    urls = json.load(open('.maigret.json'))
+                else:
+                    urls = []
+
+                if main_url in urls:
+                    message += colored(' [v] Local findings', 'green')
+
                 if maigret.db.extract_ids_from_url(r.url):
                     message += colored(' [v] Maigret', 'green')
+                    maigret_found = True
                 else:
                     message += colored(' [ ] Maigret', 'yellow')
+
+                urls.append(main_url)
+                with open('.maigret.json', 'w') as f:
+                    json.dump(urls, f, indent=4)
 
             if 'socid_extractor' in args.plugins:
                 try:
@@ -666,7 +806,32 @@ def main():
                 except Exception as e:
                     print(colored(e, 'red'))
 
-            print(f'{message}\n{r.title}\n')
+            message += f'\n{colored("Title:", "cyan")} {r.title}'
+
+            if 'extract_username' in args.plugins:
+                guessed_username = extract_username_from_url(r.url)
+                # workaround for the case when an AI response contains a comment
+                guessed_username = guessed_username.split()[-1]
+
+                comment = ""
+                if not guessed_username.lower() in r.url.lower():
+                    comment = colored(" Invalid", "red")
+                message += colored("\n[extract_username] Username guessed by AI: ", 'cyan') + guessed_username + comment
+
+                if 'maigret_export' in args.plugins:
+                    if maigret_found:
+                        message += colored("\n[maigret_exporter] The site was already found in Maigret, skipping...", 'yellow')
+                    else:
+                        keywords = maigret_exporter(r)
+                        if keywords[2] != "Found":
+                            message += colored(f"\n[maigret_exporter] No keywords found: {keywords[2]}", 'yellow')
+                        else:
+                            presence_strings = keywords[0]
+                            absence_strings = keywords[1]
+                            message += colored("\n[maigret_exporter] Presense keywords for Maigret: ", 'yellow') + ', '.join(presence_strings)
+                            message += colored("\n[maigret_exporter] Absence keywords for Maigret: ", 'yellow') + ', '.join(absence_strings)
+
+            print(f'{colored("URL:", "cyan")} {message}\n')
 
     pdf_count = 0
 
@@ -723,6 +888,11 @@ def main():
         error_msg += f'Warning: {w}\n'
 
     print(f"{colored(status_msg, 'cyan')}\n{colored(error_msg, 'yellow')}")
+
+    if displayed_count == 0 and uniq_count > 20:
+        print(colored('\nNo reliable links filtered, although there are more than 20 unique links.', 'red'))
+        print(colored(f'Try to decrease threshold with -t option ({args.threshold} at the moment).', 'red'))
+        print(colored(f'Junk scores: medium {medium_junk_score:.1f} / average {average_junk_score:.1f}\n', 'red'))
 
     if args.csv:
         with open(args.csv, 'w', newline='', encoding='utf-8') as csvfile:
