@@ -1,6 +1,6 @@
 aiohttp>=3.8.0
 termcolor>=2.0.0
-beautifulsoup4>=4.9.0
+beautifulsoup4>=4.14.3
 requests>=2.25.0
 yandex-search>=0.3.2
 PyPDF2>=2.0.0
