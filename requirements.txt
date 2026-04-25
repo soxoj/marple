@@ -1,7 +1,7 @@
 aiohttp>=3.8.0
 termcolor>=2.0.0
 beautifulsoup4>=4.14.3
-requests>=2.25.0
+requests>=2.33.1
 yandex-search>=0.3.2
 PyPDF2>=3.0.1
 socid-extractor>=0.0.1
