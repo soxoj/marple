@@ -9,6 +9,6 @@ aiohttp-socks>=0.11.0
 tqdm>=4.65.0
 google-search-results>=2.4.2
 mock>=5.2.0
-arabic-reshaper>=3.0.0
+arabic-reshaper>=3.0.1
 maigret @ https://github.com/soxoj/maigret/archive/refs/heads/master.zip
 search-engines @ https://github.com/soxoj/Search-Engines-Scraper/archive/refs/heads/master.zip
