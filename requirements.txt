@@ -1,4 +1,4 @@
-aiohttp>=3.8.0
+aiohttp>=3.13.5
 termcolor>=2.0.0
 beautifulsoup4>=4.14.3
 requests>=2.33.1
