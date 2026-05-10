@@ -1,14 +1,14 @@
-aiohttp>=3.8.0
-termcolor>=2.0.0
+aiohttp>=3.13.5
+termcolor>=3.3.0
 beautifulsoup4>=4.14.3
 requests>=2.33.1
 yandex-search>=0.3.2
 PyPDF2>=3.0.1
 socid-extractor>=0.0.28
 aiohttp-socks>=0.11.0
-tqdm>=4.65.0
+tqdm>=4.67.3
 google-search-results>=2.4.2
 mock>=5.2.0
-arabic-reshaper>=3.0.0
+arabic-reshaper>=3.0.1
 maigret @ https://github.com/soxoj/maigret/archive/refs/heads/master.zip
 search-engines @ https://github.com/soxoj/Search-Engines-Scraper/archive/refs/heads/master.zip
