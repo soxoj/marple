@@ -132,6 +132,14 @@ $ python3 -m pytest tests
 - [ ] Engine-specific filters
 - [ ] 'Username in title' check
 
+## SOWEL classification
+
+OSINT techniques used:
+  - [SOTL-2.2. Search for Accounts on Other Platforms](https://sowel.soxoj.com/other-platform-accounts)
+  - [SOTL-6.1. Check Logins Reuse to Find Another Account](https://sowel.soxoj.com/logins-reuse)
+  - [SOTL-6.2. Check Nicknames Reuse to Find Another Account](https://sowel.soxoj.com/nicknames-reuse)
+  - [SOTL-24.1. Try Various Search Requests](https://sowel.soxoj.com/search-requests)
+
 ## Mentions and articles
 
 [Sector035 - Week in OSINT #2021-50](https://sector035.nl/articles/2021-50)
