@@ -5,6 +5,7 @@ import json
 from mock import Mock
 import re
 import os
+import statistics
 from typing import List
 from argparse import ArgumentParser as Arguments, RawDescriptionHelpFormatter
 import urllib.parse
@@ -723,6 +724,12 @@ def main():
         error_msg += f'Warning: {w}\n'
 
     print(f"{colored(status_msg, 'cyan')}\n{colored(error_msg, 'yellow')}")
+
+    if displayed_count == 0 and uniq_count > 20:
+        scores = [r.junk_score for r in result.unique_links]
+        print(colored('No reliable links found, although there are more than 20 unique links.', 'red'))
+        print(colored(f'Try to increase threshold with -t option ({args.threshold} at the moment).', 'red'))
+        print(colored(f'Junk scores: median {statistics.median(scores):.1f} / average {statistics.mean(scores):.1f}\n', 'red'))
 
     if args.csv:
         with open(args.csv, 'w', newline='', encoding='utf-8') as csvfile:
