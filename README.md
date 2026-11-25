@@ -57,11 +57,21 @@ Advanced usage:
 
 ## Installation
 
-All you need is Python3. And pip. And requirements, of course.
+You need Python 3.10–3.13 (3.14 is not supported yet, the search engines library doesn't install on it) and pip.
 
 ```
+git clone https://github.com/soxoj/marple && cd marple
+python3 -m venv venv && source venv/bin/activate
 pip3 install -r requirements.txt
 ```
+
+[Maigret](https://github.com/soxoj/maigret) is needed only for `--plugins maigret` and is not installed by default:
+
+```
+pip3 install maigret
+```
+
+pip will complain about a `curl_cffi` version conflict with `search-engines` at this step, it's safe to ignore.
 
 You need API keys for some search engines (see requirements in [Supported sources](#supported-sources)). Keys should be exported to env in this way:
 ```
